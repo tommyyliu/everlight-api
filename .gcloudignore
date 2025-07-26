@@ -1,0 +1,8 @@
+.venv
+.git
+.idea
+.env
+.gitignore
+README.md
+
+.pytest_cache
