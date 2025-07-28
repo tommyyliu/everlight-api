@@ -115,3 +115,17 @@ class Note(Base):
     embedding: Mapped[NDArray[np.float16]] = mapped_column(HALFVEC(3072))  # Store embedding vector (768 dimensions for Gemini)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now())
+
+
+class WebhookToken(Base):
+    __tablename__ = 'webhook_tokens'
+    
+    id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
+    verification_token: Mapped[str] = mapped_column(String(255))
+    source: Mapped[str] = mapped_column(String(50))  # e.g., 'notion', 'slack', etc.
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now())
+
+    # Composite unique constraint - one token per user per source
+    __table_args__ = (UniqueConstraint('user_id', 'source'),)

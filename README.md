@@ -34,7 +34,16 @@ cp .env.example .env
 # - Firebase credentials
 # - Google Gemini API key
 # - Notion OAuth credentials
+# - AI Agent Service URL and token
 ```
+
+Key environment variables:
+- `DATABASE_URL` - PostgreSQL connection string
+- `GOOGLE_APPLICATION_CREDENTIALS` - Firebase service account
+- `GOOGLE_API_KEY` - For Gemini embeddings
+- `NOTION_CLIENT_ID` / `NOTION_CLIENT_SECRET` - Notion OAuth
+- `AI_AGENT_SERVICE_URL` - URL of AI agent service (e.g., everlight-agents)
+- `AI_AGENT_SERVICE_TOKEN` - Optional bearer token for agent service auth
 
 ### 3. Run the Service
 ```bash

@@ -32,6 +32,17 @@ class IntegrationResponse(BaseModel):
     task_id: str = None
 
 
+class WebhookPayload(BaseModel):
+    """Webhook payload containing verification token."""
+    verification_token: str
+
+
+class WebhookResponse(BaseModel):
+    """Response for webhook operations."""
+    status: str
+    message: str
+
+
 @router.post("/notion/connect", response_model=IntegrationResponse)
 async def connect_notion(
     code: str,
@@ -158,6 +169,60 @@ async def disconnect_notion(
             status_code=500,
             detail=f"Failed to disconnect Notion: {str(e)}"
         )
+
+
+@router.post("/webhook/{user_uuid}", response_model=WebhookResponse)
+async def handle_webhook(
+    user_uuid: UUID,
+    payload: WebhookPayload,
+    db: Annotated[Session, Depends(get_db_session)]
+):
+    """
+    Handle webhook requests for a specific user. 
+    Stores the verification token for the user.
+    """
+    try:
+        # Verify that the user exists
+        user_query = select(models.User).where(models.User.id == user_uuid)
+        user = db.execute(user_query).scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if a webhook token already exists for this user and source
+        # For now, we'll assume the source is 'notion' but this could be made dynamic
+        source = "notion"  # This could be extracted from headers or made a parameter
+        
+        existing_token_query = select(models.WebhookToken).where(
+            models.WebhookToken.user_id == user_uuid,
+            models.WebhookToken.source == source
+        )
+        existing_token = db.execute(existing_token_query).scalar_one_or_none()
+        
+        if existing_token:
+            # Update existing token
+            existing_token.verification_token = payload.verification_token
+        else:
+            # Create new webhook token
+            webhook_token = models.WebhookToken(
+                user_id=user_uuid,
+                verification_token=payload.verification_token,
+                source=source
+            )
+            db.add(webhook_token)
+        
+        db.commit()
+        
+        return WebhookResponse(
+            status="success",
+            message="Webhook verification token stored successfully"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to process webhook: {str(e)}")
 
 
 async def _exchange_notion_code_for_token(code: str) -> str:
