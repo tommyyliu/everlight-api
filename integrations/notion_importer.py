@@ -24,6 +24,154 @@ from db.embedding import embed_document
 from sqlalchemy import select
 
 
+async def create_or_update_notion_page(user_id: UUID, page_id: str, notion_token: str = None) -> Dict[str, Any]:
+    """
+    Create or update a single Notion page in the raw entries.
+    This function is designed to be called from webhook events.
+    
+    Args:
+        user_id: The user's UUID
+        page_id: The Notion page ID to process
+        notion_token: Notion integration token (optional, will use stored token if not provided)
+        
+    Returns:
+        Dict with operation results
+    """
+    
+    # If no token provided, try to get stored token
+    if not notion_token:
+        try:
+            notion_token = await get_stored_notion_token(user_id)
+        except ValueError as e:
+            return {
+                "status": "error",
+                "message": str(e),
+                "page_id": page_id,
+                "operation": "none"
+            }
+    
+    print(f"Processing Notion page {page_id} for user {user_id}")
+    
+    # Initialize Notion client
+    client = AsyncClient(auth=notion_token)
+    rate_limit_delay = 0.4  # 3 requests per second max
+    
+    # Get database session
+    db = SessionLocal()
+    
+    try:
+        # Check if we already have this page in raw entries
+        existing_entry_query = select(RawEntry).where(
+            RawEntry.user_id == user_id,
+            RawEntry.source == "notion",
+            RawEntry.content["import_metadata"]["page_id"].astext == page_id
+        )
+        existing_entry = db.execute(existing_entry_query).scalar_one_or_none()
+        
+        # Get full page details from Notion
+        try:
+            full_page = await client.pages.retrieve(page_id)
+            await asyncio.sleep(rate_limit_delay)
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Failed to retrieve page from Notion: {str(e)}",
+                "page_id": page_id,
+                "operation": "none"
+            }
+        
+        # Get all blocks for the page
+        try:
+            blocks = await _get_all_blocks(client, page_id, rate_limit_delay)
+        except Exception as e:
+            return {
+                "status": "error", 
+                "message": f"Failed to retrieve page blocks: {str(e)}",
+                "page_id": page_id,
+                "operation": "none"
+            }
+        
+        # Create raw entry content with full Notion format
+        raw_entry_content = {
+            "notion_page": full_page,  # Full page object from Notion API
+            "notion_blocks": blocks,   # Full blocks array from Notion API
+            "source": "notion",
+            "import_metadata": {
+                "imported_at": asyncio.get_event_loop().time(),
+                "page_id": page_id,
+                "block_count": len(blocks),
+                "last_edited_time": full_page.get("last_edited_time"),
+                "webhook_triggered": True
+            }
+        }
+        
+        # Generate embedding from a simple text representation
+        text_for_embedding = _extract_simple_text(full_page, blocks)
+        embedding = embed_document(text_for_embedding)
+        
+        operation = "none"
+        
+        if existing_entry:
+            # Update existing entry
+            existing_entry.content = raw_entry_content
+            existing_entry.embedding = embedding
+            operation = "updated"
+            print(f"   Updated existing raw entry with ID: {existing_entry.id}")
+        else:
+            # Create new raw entry
+            raw_entry = RawEntry(
+                user_id=user_id,
+                source="notion",
+                content=raw_entry_content,
+                embedding=embedding
+            )
+            db.add(raw_entry)
+            db.flush()  # Ensure the entry gets an ID
+            existing_entry = raw_entry  # For notification purposes
+            operation = "created"
+            print(f"   Created new raw entry with ID: {raw_entry.id}")
+        
+        # Commit the changes
+        db.commit()
+        
+        # Send notification to AI agent
+        try:
+            await _send_raw_entry_notification(user_id, existing_entry, {
+                "page_id": page_id,
+                "block_count": len(blocks),
+                "text_preview": text_for_embedding[:200] + "..." if len(text_for_embedding) > 200 else text_for_embedding,
+                "operation": operation,
+                "webhook_triggered": True,
+                "last_edited_time": full_page.get("last_edited_time")
+            })
+            print(f"   Notification sent for {operation} operation")
+        except Exception as send_error:
+            print(f"   Warning: Failed to send notification for page {page_id}: {send_error}")
+            # Continue even if notification sending fails
+        
+        return {
+            "status": "success",
+            "message": f"Page {operation} successfully",
+            "page_id": page_id,
+            "operation": operation,
+            "raw_entry_id": str(existing_entry.id),
+            "block_count": len(blocks)
+        }
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error processing page {page_id}: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "page_id": page_id,
+            "operation": "none"
+        }
+        
+    finally:
+        db.close()
+
+
 async def get_stored_notion_token(user_id: UUID) -> str:
     """
     Get stored Notion token for a user.

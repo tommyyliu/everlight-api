@@ -1,10 +1,10 @@
-from typing import Annotated
+from typing import Annotated, Union
 from uuid import UUID
 import os
 import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -32,9 +32,28 @@ class IntegrationResponse(BaseModel):
     task_id: str = None
 
 
-class WebhookPayload(BaseModel):
-    """Webhook payload containing verification token."""
+class NotionWebhookVerification(BaseModel):
+    """Notion webhook verification payload."""
     verification_token: str
+
+
+class NotionWebhookEvent(BaseModel):
+    """Notion webhook event payload based on actual Notion webhook structure."""
+    id: str
+    timestamp: str
+    workspace_id: str
+    workspace_name: str
+    subscription_id: str
+    integration_id: str
+    authors: list[dict]
+    attempt_number: int
+    entity: dict  # Contains id and type
+    type: str  # Event type like "page.created", "page.content_updated"
+    data: dict  # Contains parent info and updated_blocks for content updates
+
+
+# Union type for the webhook payload
+NotionWebhookPayload = Union[NotionWebhookVerification, NotionWebhookEvent]
 
 
 class WebhookResponse(BaseModel):
@@ -171,15 +190,16 @@ async def disconnect_notion(
         )
 
 
-@router.post("/webhook/{user_uuid}", response_model=WebhookResponse)
-async def handle_webhook(
+@router.post("/webhook/{user_uuid}/notion")
+async def handle_notion_webhook(
     user_uuid: UUID,
-    payload: WebhookPayload,
+    payload: NotionWebhookPayload,
+    background_tasks: BackgroundTasks,
     db: Annotated[Session, Depends(get_db_session)]
 ):
     """
-    Handle webhook requests for a specific user. 
-    Stores the verification token for the user.
+    Unified Notion webhook endpoint that handles both verification challenges and events.
+    Notion sends both types of requests to the same endpoint.
     """
     try:
         # Verify that the user exists
@@ -189,40 +209,112 @@ async def handle_webhook(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Check if a webhook token already exists for this user and source
-        # For now, we'll assume the source is 'notion' but this could be made dynamic
-        source = "notion"  # This could be extracted from headers or made a parameter
-        
-        existing_token_query = select(models.WebhookToken).where(
-            models.WebhookToken.user_id == user_uuid,
-            models.WebhookToken.source == source
-        )
-        existing_token = db.execute(existing_token_query).scalar_one_or_none()
-        
-        if existing_token:
-            # Update existing token
-            existing_token.verification_token = payload.verification_token
-        else:
-            # Create new webhook token
-            webhook_token = models.WebhookToken(
-                user_id=user_uuid,
-                verification_token=payload.verification_token,
-                source=source
+        # Handle verification challenge
+        if isinstance(payload, NotionWebhookVerification):
+            print(f"Received verification challenge for user {user_uuid}")
+            
+            # Store the verification token
+            existing_token_query = select(models.WebhookToken).where(
+                models.WebhookToken.user_id == user_uuid,
+                models.WebhookToken.source == "notion"
             )
-            db.add(webhook_token)
+            existing_token = db.execute(existing_token_query).scalar_one_or_none()
+            
+            if existing_token:
+                # Update existing token
+                existing_token.verification_token = payload.verification_token
+            else:
+                # Create new webhook token
+                webhook_token = models.WebhookToken(
+                    user_id=user_uuid,
+                    verification_token=payload.verification_token,
+                    source="notion"
+                )
+                db.add(webhook_token)
+            
+            db.commit()
+            
+            # Return success response for verification
+            return WebhookResponse(
+                status="success",
+                message="Webhook verification token stored successfully"
+            )
         
-        db.commit()
+        # Handle actual events
+        elif isinstance(payload, NotionWebhookEvent):
+            print(f"Received {payload.type} event for user {user_uuid}")
+            
+            # Check if user has a webhook token (verification should have happened first)
+            webhook_token_query = select(models.WebhookToken).where(
+                models.WebhookToken.user_id == user_uuid,
+                models.WebhookToken.source == "notion"
+            )
+            webhook_token = db.execute(webhook_token_query).scalar_one_or_none()
+            
+            if not webhook_token:
+                raise HTTPException(
+                    status_code=404, 
+                    detail="No webhook verification found. Please complete webhook setup first."
+                )
+            
+            # Process different event types
+            if payload.type in ["page.created", "page.content_updated"]:
+                # Extract page ID from the entity field
+                page_id = payload.entity.get("id")
+                if not page_id:
+                    raise HTTPException(status_code=400, detail="No page ID found in entity data")
+                
+                # Verify this is a page entity
+                if payload.entity.get("type") != "page":
+                    return WebhookResponse(
+                        status="success",
+                        message=f"Entity type {payload.entity.get('type')} not supported"
+                    )
+                
+                # Process the page in the background
+                background_tasks.add_task(
+                    _process_notion_page_event,
+                    user_uuid,
+                    page_id,
+                    payload.type,
+                    payload.id
+                )
+                
+                return WebhookResponse(
+                    status="success",
+                    message=f"Notion {payload.type} event queued for processing"
+                )
+            
+            elif payload.type == "page.deleted":
+                # For deleted pages, we might want to mark them as deleted or remove them
+                page_id = payload.entity.get("id")
+                print(f"Page {page_id} was deleted for user {user_uuid}")
+                
+                return WebhookResponse(
+                    status="success",
+                    message="Page deletion event acknowledged"
+                )
+            
+            else:
+                # Unsupported event type - acknowledge but don't process
+                print(f"Unsupported Notion event type: {payload.type}")
+                return WebhookResponse(
+                    status="success",
+                    message=f"Event type {payload.type} acknowledged but not processed"
+                )
         
-        return WebhookResponse(
-            status="success",
-            message="Webhook verification token stored successfully"
-        )
+        else:
+            # This shouldn't happen with proper Union type handling
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid payload format"
+            )
         
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to process webhook: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process Notion webhook: {str(e)}")
 
 
 async def _exchange_notion_code_for_token(code: str) -> str:
@@ -318,6 +410,39 @@ async def _get_integration_token(db: Session, user_id: UUID, integration_type: s
         )
     
     return token_record.access_token
+
+
+async def _process_notion_page_event(user_id: UUID, page_id: str, event_type: str, event_id: str):
+    """
+    Background task to process a single Notion page event.
+    This runs outside the request context.
+    """
+    
+    import asyncio
+    import logging
+    import sys
+    import os
+    
+    # Add the project root to the path so we can import our modules
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Import our Notion function
+        from integrations.notion_importer import create_or_update_notion_page
+        
+        logger.info(f"Processing Notion {event_type} event {event_id} for user {user_id}, page {page_id}")
+        
+        # Process the page
+        result = await create_or_update_notion_page(user_id, page_id)
+        
+        logger.info(f"Notion page processing completed for user {user_id}: {result}")
+        
+    except Exception as e:
+        logger.error(f"Notion page processing failed for user {user_id}, page {page_id} (event: {event_id}): {e}")
 
 
 async def _import_notion_pages_background(user_id: UUID, notion_token: str, task_id: str):
