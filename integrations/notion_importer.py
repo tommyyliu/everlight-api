@@ -10,8 +10,6 @@ import os
 import json
 from uuid import UUID
 from typing import List, Dict, Any
-import httpx
-from google.cloud import tasks_v2
 
 try:
     from notion_client import AsyncClient
@@ -23,6 +21,7 @@ from db.session import SessionLocal
 from db.models import RawEntry, IntegrationToken
 from db.embedding import embed_document
 from sqlalchemy import select
+from integrations.messaging import send_raw_entry_notification
 
 
 async def create_or_update_notion_page(user_id: UUID, page_id: str, notion_token: str = None) -> Dict[str, Any]:
@@ -139,7 +138,7 @@ async def create_or_update_notion_page(user_id: UUID, page_id: str, notion_token
         
         # Send notification to AI agent
         try:
-            await _send_raw_entry_notification(user_id, existing_entry, {
+            await send_raw_entry_notification(user_id, existing_entry, {
                 "page_id": page_id,
                 "block_count": len(blocks),
                 "text_preview": text_for_embedding[:200] + "..." if len(text_for_embedding) > 200 else text_for_embedding,
@@ -296,7 +295,7 @@ async def populate_raw_entries_from_notion(user_id: UUID, notion_token: str = No
                 
                 # Send the raw entry to AI agent for processing
                 try:
-                    await _send_raw_entry_notification(user_id, raw_entry, {
+                    await send_raw_entry_notification(user_id, raw_entry, {
                         "page_id": page["id"],
                         "block_count": len(blocks),
                         "text_preview": text_for_embedding[:200] + "..." if len(text_for_embedding) > 200 else text_for_embedding
