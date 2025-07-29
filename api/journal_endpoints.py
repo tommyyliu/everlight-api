@@ -84,3 +84,33 @@ def delete_entry(
     db.commit()
 
     return db_entry
+
+
+class SlateResponse(BaseModel):
+    """Response model for slate content."""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
+    user_id: UUID
+    content: str
+    updated_at: Optional[datetime]
+
+
+@router.get("/slate", response_model=SlateResponse)
+def get_slate(
+        db: Annotated[Session, Depends(get_db_session)],
+        user: CurrentUser):
+    """Get the current slate content for the user."""
+    db_slate = db.query(models.Slate).filter(models.Slate.user_id == user.id).first()
+    
+    if not db_slate:
+        # Create a new empty slate if none exists
+        db_slate = models.Slate(
+            user_id=user.id,
+            content=""
+        )
+        db.add(db_slate)
+        db.commit()
+        db.refresh(db_slate)
+    
+    return db_slate
