@@ -2,8 +2,11 @@ from typing import Annotated, Union
 from uuid import UUID
 import os
 import httpx
+import hmac
+import hashlib
+import json
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Header
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -190,24 +193,58 @@ async def disconnect_notion(
         )
 
 
-@router.post("/webhook/{user_uuid}/notion")
+@router.post("/webhook/{user_uuid}")
 async def handle_notion_webhook(
     user_uuid: UUID,
-    payload: NotionWebhookPayload,
+    request: Request,
     background_tasks: BackgroundTasks,
-    db: Annotated[Session, Depends(get_db_session)]
+    db: Annotated[Session, Depends(get_db_session)],
+    x_notion_signature: Annotated[str, Header(alias="X-Notion-Signature")] = None
 ):
     """
     Unified Notion webhook endpoint that handles both verification challenges and events.
-    Notion sends both types of requests to the same endpoint.
+    Includes signature verification for security.
     """
     try:
+        # Get the raw request body for signature verification
+        body = await request.body()
+        
+        # Parse the JSON payload
+        try:
+            payload_dict = json.loads(body.decode())
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON payload")
+        
         # Verify that the user exists
         user_query = select(models.User).where(models.User.id == user_uuid)
         user = db.execute(user_query).scalar_one_or_none()
         
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # Determine payload type and parse accordingly
+        if "verification_token" in payload_dict:
+            payload = NotionWebhookVerification.model_validate(payload_dict)
+        else:
+            payload = NotionWebhookEvent.model_validate(payload_dict)
+            
+            # For actual events (not verification), verify the signature
+            if x_notion_signature:
+                # Get the stored verification token
+                webhook_token_query = select(models.WebhookToken).where(
+                    models.WebhookToken.user_id == user_uuid,
+                    models.WebhookToken.source == "notion"
+                )
+                webhook_token = db.execute(webhook_token_query).scalar_one_or_none()
+                
+                if webhook_token:
+                    # Verify the signature
+                    if not _verify_notion_signature(body, webhook_token.verification_token, x_notion_signature):
+                        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+                else:
+                    print(f"Warning: No verification token found for signature validation")
+            else:
+                print(f"Warning: No X-Notion-Signature header provided")
         
         # Handle verification challenge
         if isinstance(payload, NotionWebhookVerification):
@@ -315,6 +352,40 @@ async def handle_notion_webhook(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to process Notion webhook: {str(e)}")
+
+
+def _verify_notion_signature(body: bytes, verification_token: str, signature_header: str) -> bool:
+    """
+    Verify Notion webhook signature using HMAC-SHA256.
+    
+    Args:
+        body: Raw request body bytes
+        verification_token: The stored verification token from initial webhook setup
+        signature_header: The X-Notion-Signature header value
+        
+    Returns:
+        True if signature is valid, False otherwise
+    """
+    try:
+        # Extract the signature from the header (format: "sha256=<signature>")
+        if not signature_header.startswith("sha256="):
+            return False
+        
+        received_signature = signature_header[7:]  # Remove "sha256=" prefix
+        
+        # Calculate the expected signature
+        expected_signature = hmac.new(
+            verification_token.encode('utf-8'),
+            body,
+            hashlib.sha256
+        ).hexdigest()
+        
+        # Use timing-safe comparison to prevent timing attacks
+        return hmac.compare_digest(expected_signature, received_signature)
+        
+    except Exception as e:
+        print(f"Error verifying signature: {e}")
+        return False
 
 
 async def _exchange_notion_code_for_token(code: str) -> str:
