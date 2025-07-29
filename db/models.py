@@ -83,9 +83,15 @@ class RawEntry(Base):
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
     source: Mapped[str] = mapped_column(String(100))  # e.g., 'journal', 'voice_note', 'import', etc.
+    source_id: Mapped[Optional[str]] = mapped_column(String(255))  # External ID from source system (e.g., Notion page ID)
     content: Mapped[dict] = mapped_column(JSON)  # JSONB-like storage for flexible content structure
     embedding: Mapped[NDArray[np.float16]] = mapped_column(HALFVEC(3072))  # Store embedding vector (768 dimensions for Gemini)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    
+    # Index for efficient lookups by source and source_id
+    __table_args__ = (
+        UniqueConstraint('user_id', 'source', 'source_id', name='uq_user_source_source_id'),
+    )
 
 
 class IntegrationToken(Base):

@@ -66,7 +66,7 @@ def test_environment_variables_example():
         'AI_AGENT_SERVICE_URL',
         'AI_AGENT_SERVICE_TOKEN',
         'DATABASE_URL',
-        'GOOGLE_API_KEY',
+        'GEMINI_API_KEY',
         'NOTION_CLIENT_ID'
     ]
     

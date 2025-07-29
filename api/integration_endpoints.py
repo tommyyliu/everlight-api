@@ -289,7 +289,7 @@ async def handle_notion_webhook(
                 # For deleted pages, we might want to mark them as deleted or remove them
                 page_id = payload.entity.get("id")
                 print(f"Page {page_id} was deleted for user {user_uuid}")
-                
+
                 return WebhookResponse(
                     status="success",
                     message="Page deletion event acknowledged"

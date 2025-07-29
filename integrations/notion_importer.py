@@ -11,6 +11,7 @@ import json
 from uuid import UUID
 from typing import List, Dict, Any
 import httpx
+from google.cloud import tasks_v2
 
 try:
     from notion_client import AsyncClient
@@ -61,10 +62,11 @@ async def create_or_update_notion_page(user_id: UUID, page_id: str, notion_token
     
     try:
         # Check if we already have this page in raw entries
+        # Use source_id for efficient lookup instead of JSON path
         existing_entry_query = select(RawEntry).where(
             RawEntry.user_id == user_id,
             RawEntry.source == "notion",
-            RawEntry.content["import_metadata"]["page_id"].astext == page_id
+            RawEntry.source_id == page_id
         )
         existing_entry = db.execute(existing_entry_query).scalar_one_or_none()
         
@@ -122,6 +124,7 @@ async def create_or_update_notion_page(user_id: UUID, page_id: str, notion_token
             raw_entry = RawEntry(
                 user_id=user_id,
                 source="notion",
+                source_id=page_id,  # Store page ID for efficient lookups
                 content=raw_entry_content,
                 embedding=embedding
             )
@@ -282,6 +285,7 @@ async def populate_raw_entries_from_notion(user_id: UUID, notion_token: str = No
                 raw_entry = RawEntry(
                     user_id=user_id,
                     source="notion",
+                    source_id=page["id"],  # Store page ID for efficient lookups
                     content=raw_entry_content,
                     embedding=embedding
                 )
@@ -422,89 +426,49 @@ def _extract_simple_text(page: Dict[str, Any], blocks: List[Dict[str, Any]]) -> 
 
 async def _send_raw_entry_notification(user_id: UUID, raw_entry, metadata: Dict[str, Any]):
     """
-    Send notification about new raw entry to AI agent service.
+    Enqueue a task to send notification about new raw entry to AI agent service.
     
     Args:
         user_id: The user's UUID
         raw_entry: The RawEntry object that was created
         metadata: Additional metadata about the entry
     """
-    # Get AI agent service configuration from environment
-    agent_service_url = os.getenv("AI_AGENT_SERVICE_URL")
-    agent_service_token = os.getenv("AI_AGENT_SERVICE_TOKEN")
-    
-    if not agent_service_url:
-        print("   AI_AGENT_SERVICE_URL not configured - skipping notification")
-        return
-    
-    # Prepare the message payload
-    message_data = {
-        "type": "new_raw_entry",
-        "raw_entry_id": str(raw_entry.id),
-        "user_id": str(user_id),
-        "source": "notion",
-        "content": raw_entry.content,
-        "metadata": metadata,
-        "timestamp": raw_entry.created_at.isoformat() if hasattr(raw_entry, 'created_at') else None
-    }
-    
-    # Prepare headers
-    headers = {
-        "Content-Type": "application/json",
-        "User-Agent": "everlight-api/notion-importer"
-    }
-    
-    if agent_service_token:
-        headers["Authorization"] = f"Bearer {agent_service_token}"
-    
-    # Send the notification
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        try:
-            response = await client.post(
-                f"{agent_service_url}/messages",
-                json={
-                    "user_id": str(user_id),
-                    "channel": "raw_data_entries",
-                    "message": json.dumps(message_data),
-                    "sender": "notion_importer"
-                },
-                headers=headers
-            )
-            
-            if response.status_code == 200:
-                print(f"   Successfully sent notification to AI agent service")
-            else:
-                print(f"   AI agent service returned status {response.status_code}: {response.text}")
-                
-        except httpx.TimeoutException:
-            print(f"   Timeout sending notification to AI agent service")
-        except httpx.RequestError as e:
-            print(f"   Request error sending notification to AI agent service: {e}")
-        except Exception as e:
-            print(f"   Unexpected error sending notification to AI agent service: {e}")
-
-
-def send_message(user_id: UUID, channel: str, message: str, sender: str = "notion_importer"):
-    """
-    Synchronous wrapper for sending messages to AI agent service.
-    This function maintains compatibility with the original everlight-b2 interface.
-    
-    Args:
-        user_id: The user's UUID
-        channel: The message channel
-        message: The message content (usually JSON string)
-        sender: The sender identifier
-    """
-    import asyncio
-    
-    async def _async_send():
+    try:
+        # Get Google Cloud Tasks configuration
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+        location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+        queue_name = "messages"
         agent_service_url = os.getenv("AI_AGENT_SERVICE_URL")
         agent_service_token = os.getenv("AI_AGENT_SERVICE_TOKEN")
         
+        if not project_id:
+            print("   GOOGLE_CLOUD_PROJECT not configured - skipping notification")
+            return
+            
         if not agent_service_url:
-            print("   AI_AGENT_SERVICE_URL not configured - skipping message")
+            print("   AI_AGENT_SERVICE_URL not configured - skipping notification")
             return
         
+        # Prepare the message payload
+        message_data = {
+            "type": "new_raw_entry",
+            "raw_entry_id": str(raw_entry.id),
+            "user_id": str(user_id),
+            "source": "notion",
+            "content": raw_entry.content,
+            "metadata": metadata,
+            "timestamp": raw_entry.created_at.isoformat() if hasattr(raw_entry, 'created_at') else None
+        }
+        
+        # Prepare the task payload for the agent service
+        task_payload = {
+            "user_id": str(user_id),
+            "channel": "raw_data_entries",
+            "message": json.dumps(message_data),
+            "sender": "notion_importer"
+        }
+        
+        # Prepare headers for the eventual HTTP request
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "everlight-api/notion-importer"
@@ -513,67 +477,24 @@ def send_message(user_id: UUID, channel: str, message: str, sender: str = "notio
         if agent_service_token:
             headers["Authorization"] = f"Bearer {agent_service_token}"
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            try:
-                response = await client.post(
-                    f"{agent_service_url}/messages",
-                    json={
-                        "user_id": str(user_id),
-                        "channel": channel,
-                        "message": message,
-                        "sender": sender
-                    },
-                    headers=headers
-                )
-                
-                if response.status_code == 200:
-                    print(f"   Message sent to channel '{channel}' successfully")
-                else:
-                    print(f"   Message send failed with status {response.status_code}: {response.text}")
-                    
-            except Exception as e:
-                print(f"   Error sending message: {e}")
-    
-    # Run the async function
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If we're already in an async context, create a task
-            asyncio.create_task(_async_send())
-        else:
-            # If not in async context, run it
-            asyncio.run(_async_send())
+        # Create Cloud Tasks client
+        client = tasks_v2.CloudTasksClient()
+        parent = client.queue_path(project_id, location, queue_name)
+        
+        # Create the task
+        task = {
+            "http_request": {
+                "http_method": tasks_v2.HttpMethod.POST,
+                "url": f"{agent_service_url}/message",
+                "headers": headers,
+                "body": json.dumps(task_payload).encode()
+            }
+        }
+        
+        # Enqueue the task
+        response = client.create_task(request={"parent": parent, "task": task})
+        print(f"   Successfully enqueued notification task: {response.name}")
+        
     except Exception as e:
-        print(f"   Failed to send message: {e}")
-
-
-# Example usage function
-async def example_usage():
-    """Example of how to use the function."""
-    from uuid import uuid4
-    
-    # Example user ID (in real usage, this would come from your auth system)
-    user_id = uuid4()
-    
-    # Get token from user
-    token = input("Enter your Notion integration token: ").strip()
-    
-    if not token:
-        print("No token provided")
-        return
-    
-    # Run the import
-    result = await populate_raw_entries_from_notion(user_id, token)
-    
-    print(f"\nFinal Result:")
-    print(f"   Status: {result['status']}")
-    print(f"   Message: {result['message']}")
-    print(f"   Pages processed: {result['pages_processed']}")
-    
-    if result['status'] == 'success' and result['pages_processed'] > 0:
-        print(f"\nRaw entries created! Check your database:")
-        print(f"   SELECT * FROM raw_entries WHERE source = 'notion' ORDER BY created_at DESC;")
-
-
-if __name__ == "__main__":
-    asyncio.run(example_usage())
+        print(f"   Error enqueuing notification task: {e}")
+        # Don't raise - we don't want notification failures to break page processing
