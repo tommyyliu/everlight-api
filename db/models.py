@@ -69,7 +69,7 @@ class Message(Base):
 
 
 class Slate(Base):
-    __tablename__ = 'slate_versions'
+    __tablename__ = 'slates'
     
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
