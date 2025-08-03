@@ -9,6 +9,8 @@ origins = [
     "http://localhost",
     "http://localhost:5173",
     "http://localhost:5173/",
+    "http://localhost:5174",
+    "http://localhost:5174/",
     "https://b5d2af84.everlight-97q.pages.dev/",
 ]
 

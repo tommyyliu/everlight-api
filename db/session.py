@@ -21,7 +21,6 @@ connection_arguments = {
 engine = create_engine(
     DATABASE_URL,
     connect_args=connection_arguments,
-    poolclass=NullPool
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
