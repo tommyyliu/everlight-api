@@ -1,11 +1,11 @@
 from uuid import uuid4
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 
 import numpy as np
 from numpy.typing import NDArray
 
-from sqlalchemy import String, DateTime, ForeignKey, JSON, Text, UniqueConstraint, func, UUID
+from sqlalchemy import String, DateTime, ForeignKey, JSON, Text, UniqueConstraint, func, UUID, Date
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from pgvector.sqlalchemy import HALFVEC
 
@@ -68,13 +68,22 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
-class Slate(Base):
-    __tablename__ = 'slates'
+class Brief(Base):
+    __tablename__ = 'briefs'
     
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
-    content: Mapped[str] = mapped_column(Text)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now())
+    utc_date: Mapped[date] = mapped_column(Date)
+    title: Mapped[str] = mapped_column(String(255))
+    content: Mapped[str] = mapped_column(Text)  # Markdown content
+    display_at: Mapped[datetime] = mapped_column(DateTime)
+    dismissed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    
+    # Index for efficient queries by user_id and utc_date
+    __table_args__ = (UniqueConstraint('user_id', 'utc_date', 'display_at'),)
+
+
 
 
 class RawEntry(Base):
