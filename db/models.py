@@ -84,8 +84,6 @@ class Brief(Base):
     __table_args__ = (UniqueConstraint('user_id', 'utc_date', 'display_at'),)
 
 
-
-
 class RawEntry(Base):
     __tablename__ = 'raw_entries'
     
