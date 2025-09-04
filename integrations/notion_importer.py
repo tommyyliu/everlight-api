@@ -11,6 +11,8 @@ import json
 from uuid import UUID
 from typing import List, Dict, Any
 
+from google.cloud import tasks_v2
+
 try:
     from notion_client import AsyncClient
 except ImportError:

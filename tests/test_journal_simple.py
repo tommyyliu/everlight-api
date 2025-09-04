@@ -7,7 +7,7 @@ import os
 import tempfile
 from datetime import datetime, timezone
 from uuid import uuid4
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -55,7 +55,6 @@ def test_journal_models():
 
 def test_week_month_calculation():
     """Test the week and month calculation logic"""
-    from api.journal_endpoints import router
     
     # Test various dates
     test_cases = [

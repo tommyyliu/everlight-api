@@ -7,7 +7,6 @@ from alembic import context
 from sqlalchemy.engine.base import Connection
 from pgvector.sqlalchemy import HALFVEC
 from pgvector.psycopg import register_vector
-from sqlalchemy.sql.expression import text
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -19,6 +18,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 from db.models import Base
+
 target_metadata = Base.metadata
 
 
@@ -77,6 +77,7 @@ def do_run_migrations(connection: Connection) -> None:
 
     with context.begin_transaction():
         context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()

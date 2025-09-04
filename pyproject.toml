@@ -24,5 +24,6 @@ prepend_sys_path = ["."]
 dev = [
     "alembic>=1.16.4",
     "pytest>=8.4.1",
+    "ruff>=0.12.11",
     "testing-postgresql>=1.3.0",
 ]

@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from pgvector.psycopg import register_vector
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool.impl import NullPool
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")

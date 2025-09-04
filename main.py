@@ -1,4 +1,4 @@
-from api import journal_endpoints, integration_endpoints
+from api import journal_endpoints, integration_endpoints, brief_endpoints
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +24,7 @@ app.add_middleware(
 
 app.include_router(journal_endpoints.router)
 app.include_router(integration_endpoints.router)
+app.include_router(brief_endpoints.router)
 
 @app.get("/health")
 async def health_check():

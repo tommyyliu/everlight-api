@@ -7,7 +7,7 @@ import hashlib
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Header
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -242,9 +242,9 @@ async def handle_notion_webhook(
                     if not _verify_notion_signature(body, webhook_token.verification_token, x_notion_signature):
                         raise HTTPException(status_code=401, detail="Invalid webhook signature")
                 else:
-                    print(f"Warning: No verification token found for signature validation")
+                    print("Warning: No verification token found for signature validation")
             else:
-                print(f"Warning: No X-Notion-Signature header provided")
+                print("Warning: No X-Notion-Signature header provided")
         
         # Handle verification challenge
         if isinstance(payload, NotionWebhookVerification):
@@ -489,7 +489,6 @@ async def _process_notion_page_event(user_id: UUID, page_id: str, event_type: st
     This runs outside the request context.
     """
     
-    import asyncio
     import logging
     import sys
     import os
@@ -522,7 +521,6 @@ async def _import_notion_pages_background(user_id: UUID, notion_token: str, task
     This runs outside the request context.
     """
     
-    import asyncio
     import logging
     import sys
     import os

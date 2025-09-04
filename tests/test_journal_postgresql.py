@@ -13,7 +13,6 @@ from sqlalchemy.orm import sessionmaker
 
 # Import our application modules
 from main import app
-from db.models import Base, User, JournalEntry
 from db.session import get_db_session
 
 
