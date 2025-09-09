@@ -26,15 +26,15 @@ async def send_raw_entry_notification(user_id: UUID, raw_entry, metadata: Dict[s
         queue_name = "messages"
         agent_service_url = os.getenv("AI_AGENT_SERVICE_URL")
         agent_service_token = os.getenv("AI_AGENT_SERVICE_TOKEN")
-        
+
         if not project_id:
             print("   GOOGLE_CLOUD_PROJECT not configured - skipping notification")
             return
-            
+
         if not agent_service_url:
             print("   AI_AGENT_SERVICE_URL not configured - skipping notification")
             return
-        
+
         # Prepare the message payload
         message_data = {
             "type": "new_raw_entry",

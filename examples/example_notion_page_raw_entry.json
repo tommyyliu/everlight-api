@@ -1,0 +1,1178 @@
+{
+  "notion_page": {
+    "object": "page",
+    "id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1",
+    "created_time": "2025-09-09T17:43:00.000Z",
+    "last_edited_time": "2025-09-09T18:10:00.000Z",
+    "created_by": {
+      "object": "user",
+      "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+    },
+    "last_edited_by": {
+      "object": "user",
+      "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+    },
+    "cover": null,
+    "icon": null,
+    "parent": {
+      "type": "page_id",
+      "page_id": "24047e21-90b5-803b-a018-e9f9784753d3"
+    },
+    "archived": false,
+    "in_trash": false,
+    "properties": {
+      "title": {
+        "id": "title",
+        "type": "title",
+        "title": [
+          {
+            "type": "text",
+            "text": {
+              "content": "9/9/2025",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "9/9/2025",
+            "href": null
+          }
+        ]
+      }
+    },
+    "url": "https://www.notion.so/9-9-2025-26947e2190b5802a95e8e9dd6f7b71c1",
+    "public_url": null,
+    "request_id": "9f9d5a45-77a9-46c6-9831-fd65c6e2de1c"
+  },
+  "notion_blocks": [
+    {
+      "object": "block",
+      "id": "26947e21-90b5-8072-9eea-f1a945e81aa9",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:49:00.000Z",
+      "last_edited_time": "2025-09-09T17:49:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Woah, ran into some jank behavior in Notion. Might be because my internet is flaky this morning.",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Woah, ran into some jank behavior in Notion. Might be because my internet is flaky this morning.",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-8067-bf17-dd90b14e1131",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:48:00.000Z",
+      "last_edited_time": "2025-09-09T17:49:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "The work logs here do seem to be helping me keep up my personal momentum.",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "The work logs here do seem to be helping me keep up my personal momentum.",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80c7-8841-e66203576544",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:48:00.000Z",
+      "last_edited_time": "2025-09-09T17:48:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80eb-bd5e-e6e9ea5f4586",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "From Yesterday:",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "From Yesterday:",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-8084-9074-fded03b2466a",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Important steps for tomorrow:",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Important steps for tomorrow:",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80fd-9daf-e7531129d606",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Check that webhook data is coming through fine.",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Check that webhook data is coming through fine.",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-8096-ac0c-d554faadd0c1",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Check that briefs are being created.",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Check that briefs are being created.",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80fa-ab55-d0ec48f3ff5b",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Create a homepage",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Create a homepage",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80b7-92b2-c11280b12fd9",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Create a privacy policy",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Create a privacy policy",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-8086-98ee-d1b4e91755f1",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Create a terms of service",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Create a terms of service",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80b9-98f0-df42464e373f",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Create an app icon for Trunks",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Create an app icon for Trunks",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-8022-a4d9-cd6e2e709592",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Journal more",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Journal more",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-808f-a30d-d9051d2aded5",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Personal:",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Personal:",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80af-935f-c86e4f1bded5",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": true,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Exercise and get sunlight",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Exercise and get sunlight",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80e7-8168-f8d01a301413",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Look at screen time and write about it here.",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Look at screen time and write about it here.",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-8039-b7e1-f712d094bb19",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80ca-b1b2-e210811859b2",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Morning work:",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Morning work:",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-8039-8b0e-f4100fc2fcbd",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "I’m working on getting the webhook data propagated through the api server to the agents server.",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "I’m working on getting the webhook data propagated through the api server to the agents server.",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80de-85b3-f40f34ebc945",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:44:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "A couple issues being tackled:",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "A couple issues being tackled:",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80cb-ab67-ca4f767338e0",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:44:00.000Z",
+      "last_edited_time": "2025-09-09T17:45:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "raw_entries not being enqueued into message queue",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "raw_entries not being enqueued into message queue",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-803e-b740-e535952066a5",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:45:00.000Z",
+      "last_edited_time": "2025-09-09T17:45:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "info logs not appearing in Cloud Run logs",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "info logs not appearing in Cloud Run logs",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80aa-a062-c7f080a45223",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:45:00.000Z",
+      "last_edited_time": "2025-09-09T17:47:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "source_id is not being populated on notion raw_entries anymore. Was working around 7/30 and 7/31",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "source_id is not being populated on notion raw_entries anymore. Was working around 7/30 and 7/31",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-806b-99a6-c744fdbff6b7",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:47:00.000Z",
+      "last_edited_time": "2025-09-09T17:48:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "bulleted_list_item",
+      "bulleted_list_item": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Probably should put an updated_at field",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Probably should put an updated_at field",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-808d-a8eb-fe4cfda4e61c",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T18:09:00.000Z",
+      "last_edited_time": "2025-09-09T18:09:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-801e-9b7d-f75c155d4431",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T17:48:00.000Z",
+      "last_edited_time": "2025-09-09T18:09:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "I think I’m almost good on the webhook fixes.",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "I think I’m almost good on the webhook fixes.",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80f9-9d67-ff773ea17e2f",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T18:10:00.000Z",
+      "last_edited_time": "2025-09-09T18:10:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [],
+        "color": "default"
+      }
+    },
+    {
+      "object": "block",
+      "id": "26947e21-90b5-80e1-9133-e2fb21a0f796",
+      "parent": {
+        "type": "page_id",
+        "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1"
+      },
+      "created_time": "2025-09-09T18:10:00.000Z",
+      "last_edited_time": "2025-09-09T18:10:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "1943e46f-abf5-4395-aff7-5107d575c04a"
+      },
+      "has_children": false,
+      "archived": false,
+      "in_trash": false,
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          {
+            "type": "text",
+            "text": {
+              "content": "Going to go have a bagel with some cream cheese, maybe a short walk outside, then back to the grind before it gets too hot in the office. Silly sun-facing room.",
+              "link": null
+            },
+            "annotations": {
+              "bold": false,
+              "italic": false,
+              "strikethrough": false,
+              "underline": false,
+              "code": false,
+              "color": "default"
+            },
+            "plain_text": "Going to go have a bagel with some cream cheese, maybe a short walk outside, then back to the grind before it gets too hot in the office. Silly sun-facing room.",
+            "href": null
+          }
+        ],
+        "color": "default"
+      }
+    }
+  ],
+  "source": "notion",
+  "import_metadata": {
+    "imported_at": 13.585,
+    "page_id": "26947e21-90b5-802a-95e8-e9dd6f7b71c1",
+    "block_count": 27,
+    "last_edited_time": "2025-09-09T18:10:00.000Z",
+    "webhook_triggered": true
+  }
+}

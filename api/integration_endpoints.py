@@ -73,7 +73,8 @@ async def connect_notion(
     user: CurrentUser
 ):
     """
-    Connect Notion using OAuth code, exchange for access token, store in DB, and load all accessible pages.
+    Connect Notion using OAuth code.
+    Backend will exchange for access token, store in DB, and load all accessible pages.
     """
     
     try:
@@ -193,7 +194,7 @@ async def disconnect_notion(
         )
 
 
-@router.post("/webhook/{user_uuid}")
+@router.post("/webhook/{user_uuid}/notion")
 async def handle_notion_webhook(
     user_uuid: UUID,
     request: Request,
@@ -298,6 +299,8 @@ async def handle_notion_webhook(
             if payload.type in ["page.created", "page.content_updated"]:
                 # Extract page ID from the entity field
                 page_id = payload.entity.get("id")
+                print(f"Extracted page_id: {page_id} from entity: {payload.entity}")
+                
                 if not page_id:
                     raise HTTPException(status_code=400, detail="No page ID found in entity data")
                 
@@ -307,6 +310,8 @@ async def handle_notion_webhook(
                         status="success",
                         message=f"Entity type {payload.entity.get('type')} not supported"
                     )
+                
+                print(f"Queueing background task for user {user_uuid}, page {page_id}, event {payload.type}")
                 
                 # Process the page in the background
                 background_tasks.add_task(
@@ -489,30 +494,24 @@ async def _process_notion_page_event(user_id: UUID, page_id: str, event_type: st
     This runs outside the request context.
     """
     
-    import logging
-    import sys
-    import os
-    
-    # Add the project root to the path so we can import our modules
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    
-    logger = logging.getLogger(__name__)
+    # Use print statements for Cloud Run logging instead of logger
+    print(f"[BACKGROUND TASK] Processing Notion {event_type} event {event_id} for user {user_id}, page {page_id}")
     
     try:
-        # Import our Notion function
+        # Import our Notion function - use direct import instead of path manipulation
         from integrations.notion_importer import create_or_update_notion_page
         
-        logger.info(f"Processing Notion {event_type} event {event_id} for user {user_id}, page {page_id}")
-        
-        # Process the page
+        # Process the page - the function will retrieve the stored token internally
         result = await create_or_update_notion_page(user_id, page_id)
         
-        logger.info(f"Notion page processing completed for user {user_id}: {result}")
+        print(f"[BACKGROUND TASK] Notion page processing completed for user {user_id}: {result}")
         
+    except ImportError as e:
+        print(f"[BACKGROUND TASK] Import failed for user {user_id}, page {page_id} (event: {event_id}): {e}")
     except Exception as e:
-        logger.error(f"Notion page processing failed for user {user_id}, page {page_id} (event: {event_id}): {e}")
+        print(f"[BACKGROUND TASK] Notion page processing failed for user {user_id}, page {page_id} (event: {event_id}): {e}")
+        import traceback
+        print(f"[BACKGROUND TASK] Full traceback: {traceback.format_exc()}")
 
 
 async def _import_notion_pages_background(user_id: UUID, notion_token: str, task_id: str):
@@ -521,35 +520,29 @@ async def _import_notion_pages_background(user_id: UUID, notion_token: str, task
     This runs outside the request context.
     """
     
-    import logging
-    import sys
-    import os
-    
-    # Add the project root to the path so we can import our modules
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    
-    logger = logging.getLogger(__name__)
+    # Use print statements for Cloud Run logging instead of logger
+    print(f"[BACKGROUND TASK] Starting Notion import for user {user_id} (task: {task_id})")
     
     try:
-        # Import our Notion function
+        # Import our Notion function - use direct import instead of path manipulation
         from integrations.notion_importer import populate_raw_entries_from_notion
-        
-        logger.info(f"Starting Notion import for user {user_id} (task: {task_id})")
         
         # Run the import
         result = await populate_raw_entries_from_notion(user_id, notion_token)
         
-        logger.info(f"Notion import completed for user {user_id}: {result}")
+        print(f"[BACKGROUND TASK] Notion import completed for user {user_id}: {result}")
         
-        # Individual raw entries are sent to Eforos during import process
+        # Individual raw entries are sent to agents during import process
         # No need for bulk notification since each entry is processed individually
         
         # TODO: Could store task results in database or send notification to user
         
+    except ImportError as e:
+        print(f"[BACKGROUND TASK] Import failed for user {user_id} (task: {task_id}): {e}")
     except Exception as e:
-        logger.error(f"Notion import failed for user {user_id} (task: {task_id}): {e}")
+        print(f"[BACKGROUND TASK] Notion import failed for user {user_id} (task: {task_id}): {e}")
+        import traceback
+        print(f"[BACKGROUND TASK] Full traceback: {traceback.format_exc()}")
         # TODO: Could store error status or notify user of failure
 
 
