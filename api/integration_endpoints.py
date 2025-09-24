@@ -28,6 +28,13 @@ class NotionConnectRequest(BaseModel):
     code: str
 
 
+class GmailTokenRequest(BaseModel):
+    """Request to store Gmail API and refresh tokens."""
+    access_token: str
+    refresh_token: str
+    expires_in: int
+
+
 class IntegrationResponse(BaseModel):
     """Response for integration operations."""
     status: str
@@ -546,20 +553,48 @@ async def _import_notion_pages_background(user_id: UUID, notion_token: str, task
         # TODO: Could store error status or notify user of failure
 
 
-# Future endpoints for other data sources
-@router.post("/gmail/connect")
-async def connect_gmail(
-    # request: GmailConnectRequest,
-    background_tasks: BackgroundTasks,
+# Gmail endpoints
+@router.post("/gmail/store-tokens", response_model=IntegrationResponse)
+async def store_gmail_tokens(
+    request: GmailTokenRequest,
+    db: Annotated[Session, Depends(get_db_session)],
     user: CurrentUser
 ):
     """
-    Future endpoint for Gmail integration.
+    Store Gmail API access token and refresh token.
     """
-    return {
-        "status": "not_implemented",
-        "message": "Gmail integration coming soon"
-    }
+    try:
+        from datetime import datetime, timedelta
+
+        # Calculate expiration time
+        expires_at = datetime.utcnow() + timedelta(seconds=request.expires_in)
+
+        # Prepare token metadata
+        token_metadata = {
+            "expires_at": expires_at.isoformat(),
+            "expires_in": request.expires_in
+        }
+
+        # Store the tokens using the existing helper function
+        await _store_integration_token(
+            db=db,
+            user_id=user.id,
+            integration_type="gmail",
+            access_token=request.access_token,
+            refresh_token=request.refresh_token,
+            token_metadata=token_metadata
+        )
+
+        return IntegrationResponse(
+            status="success",
+            message="Gmail tokens stored successfully"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to store Gmail tokens: {str(e)}"
+        )
 
 
 @router.post("/calendar/connect")

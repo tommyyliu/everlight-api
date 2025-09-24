@@ -6,12 +6,9 @@ Takes user_id and token, creates one raw entry per page using full Notion API fo
 
 import asyncio
 import sys
-import os
-import json
 from uuid import UUID
 from typing import List, Dict, Any
 
-from google.cloud import tasks_v2
 
 try:
     from notion_client import AsyncClient
