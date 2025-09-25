@@ -681,6 +681,140 @@ async def connect_gmail(
     }
 
 
+@router.delete("/gmail/disconnect")
+async def disconnect_gmail(
+    db: Annotated[Session, Depends(get_db_session)],
+    user: CurrentUser,
+    revoke_token: bool = True
+):
+    """
+    Disconnect Gmail by removing stored tokens and optionally revoking them with Google.
+    """
+    try:
+        # Find the stored token
+        token_record = db.execute(
+            select(models.IntegrationToken).where(
+                models.IntegrationToken.user_id == user.id,
+                models.IntegrationToken.integration_type == "gmail"
+            )
+        ).scalar_one_or_none()
+
+        if not token_record:
+            raise HTTPException(
+                status_code=404,
+                detail="No Gmail connection found for user"
+            )
+
+        revoke_result = {"revoked": False, "error": None}
+
+        # Optionally revoke token with Google
+        if revoke_token and token_record.access_token:
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        f"https://oauth2.googleapis.com/revoke?token={token_record.access_token}",
+                        headers={"Content-Type": "application/x-www-form-urlencoded"}
+                    )
+
+                    if response.status_code == 200:
+                        revoke_result["revoked"] = True
+                    else:
+                        revoke_result["error"] = f"Google revocation failed: {response.status_code}"
+                        print(f"Token revocation failed: {response.status_code} {response.text}")
+
+            except Exception as e:
+                revoke_result["error"] = f"Revocation request failed: {str(e)}"
+                print(f"Error revoking token: {e}")
+
+        # Delete the token from database regardless of revocation result
+        db.delete(token_record)
+        db.commit()
+
+        return {
+            "status": "success",
+            "message": "Gmail disconnected successfully",
+            "token_revoked": revoke_result["revoked"],
+            "revocation_error": revoke_result["error"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to disconnect Gmail: {str(e)}"
+        )
+
+
+@router.get("/gmail/status")
+def get_gmail_status(
+    db: Annotated[Session, Depends(get_db_session)],
+    user: CurrentUser
+):
+    """
+    Check Gmail connection status and token information.
+    """
+    try:
+        # Check if user has a stored Gmail token
+        token_record = db.execute(
+            select(models.IntegrationToken).where(
+                models.IntegrationToken.user_id == user.id,
+                models.IntegrationToken.integration_type == "gmail"
+            )
+        ).scalar_one_or_none()
+
+        if not token_record:
+            return {
+                "is_connected": False,
+                "has_gmail_data": False,
+                "gmail_emails_count": 0,
+                "user_id": str(user.id)
+            }
+
+        # Count existing Gmail raw entries for this user
+        from sqlalchemy import func
+
+        count_query = select(func.count(models.RawEntry.id)).where(
+            models.RawEntry.user_id == user.id,
+            models.RawEntry.source == "gmail"
+        )
+
+        gmail_count = db.execute(count_query).scalar()
+
+        # Check token expiration
+        token_expires_at = None
+        token_expired = False
+
+        if token_record.token_metadata:
+            expires_at_str = token_record.token_metadata.get("expires_at")
+            if expires_at_str:
+                try:
+                    from datetime import datetime
+                    expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+                    token_expires_at = expires_at.isoformat()
+                    token_expired = datetime.utcnow() >= expires_at
+                except Exception:
+                    pass
+
+        return {
+            "is_connected": True,
+            "has_gmail_data": gmail_count > 0,
+            "gmail_emails_count": gmail_count,
+            "user_id": str(user.id),
+            "connected_at": token_record.created_at.isoformat(),
+            "token_expires_at": token_expires_at,
+            "token_expired": token_expired,
+            "has_refresh_token": token_record.refresh_token is not None
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get Gmail status: {str(e)}"
+        )
+
+
 @router.post("/calendar/connect")
 async def connect_calendar(
     # request: CalendarConnectRequest,
