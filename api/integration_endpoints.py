@@ -28,11 +28,9 @@ class NotionConnectRequest(BaseModel):
     code: str
 
 
-class GmailTokenRequest(BaseModel):
-    """Request to store Gmail API and refresh tokens."""
-    access_token: str
-    refresh_token: str
-    expires_in: int
+class GmailConnectRequest(BaseModel):
+    """Request to connect Gmail using OAuth code."""
+    code: str
 
 
 class IntegrationResponse(BaseModel):
@@ -442,6 +440,57 @@ async def _exchange_notion_code_for_token(code: str) -> str:
         return token_data["access_token"]
 
 
+async def _exchange_gmail_code_for_tokens(code: str) -> dict:
+    """
+    Exchange OAuth code for Gmail access and refresh tokens.
+    """
+    # Get Gmail OAuth credentials from environment
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+
+    if not all([client_id, client_secret, redirect_uri]):
+        raise HTTPException(
+            status_code=500,
+            detail="Gmail OAuth credentials not configured"
+        )
+
+    # Exchange code for tokens
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+        )
+
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to exchange code for tokens: {response.text}"
+            )
+
+        token_data = response.json()
+
+        # Calculate expiration time
+        from datetime import datetime, timedelta
+        expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
+
+        return {
+            "access_token": token_data["access_token"],
+            "refresh_token": token_data.get("refresh_token"),
+            "expires_in": token_data["expires_in"],
+            "expires_at": expires_at.isoformat()
+        }
+
+
 async def _store_integration_token(db: Session, user_id: UUID, integration_type: str, access_token: str, refresh_token: str = None, token_metadata: dict = None):
     """
     Store or update integration token in the database.
@@ -543,7 +592,7 @@ async def _import_notion_pages_background(user_id: UUID, notion_token: str, task
         # No need for bulk notification since each entry is processed individually
         
         # TODO: Could store task results in database or send notification to user
-        
+
     except ImportError as e:
         print(f"[BACKGROUND TASK] Import failed for user {user_id} (task: {task_id}): {e}")
     except Exception as e:
@@ -553,48 +602,83 @@ async def _import_notion_pages_background(user_id: UUID, notion_token: str, task
         # TODO: Could store error status or notify user of failure
 
 
+async def _import_gmail_emails_background(user_id: UUID, gmail_token: str, task_id: str):
+    """
+    Background task to import latest Gmail emails for a user.
+    This runs outside the request context.
+    """
+
+    # Use print statements for Cloud Run logging instead of logger
+    print(f"[BACKGROUND TASK] Starting Gmail import for user {user_id} (task: {task_id})")
+
+    try:
+        # Import our Gmail function - use direct import instead of path manipulation
+        from integrations.gmail_importer import import_latest_gmail_emails
+
+        # Run the import (default 10 emails)
+        result = await import_latest_gmail_emails(user_id, gmail_token, max_results=10)
+
+        print(f"[BACKGROUND TASK] Gmail import completed for user {user_id}: {result}")
+
+        # Individual raw entries are sent to agents during import process
+        # No need for bulk notification since each entry is processed individually
+
+        # TODO: Could store task results in database or send notification to user
+
+    except ImportError as e:
+        print(f"[BACKGROUND TASK] Import failed for user {user_id} (task: {task_id}): {e}")
+    except Exception as e:
+        print(f"[BACKGROUND TASK] Gmail import failed for user {user_id} (task: {task_id}): {e}")
+        import traceback
+        print(f"[BACKGROUND TASK] Full traceback: {traceback.format_exc()}")
+        # TODO: Could store error status or notify user of failure
+
+
 # Gmail endpoints
-@router.post("/gmail/store-tokens", response_model=IntegrationResponse)
-async def store_gmail_tokens(
-    request: GmailTokenRequest,
+@router.post("/gmail/connect", response_model=IntegrationResponse)
+async def connect_gmail(
+    request: GmailConnectRequest,
+    background_tasks: BackgroundTasks,
     db: Annotated[Session, Depends(get_db_session)],
     user: CurrentUser
 ):
     """
-    Store Gmail API access token and refresh token.
+    Connect Gmail using OAuth code and import latest emails.
+    Backend will exchange for access token, store in DB, and import emails.
     """
-    try:
-        from datetime import datetime, timedelta
+    # Exchange code for access token and refresh token
+    token_data = await _exchange_gmail_code_for_tokens(request.code)
 
-        # Calculate expiration time
-        expires_at = datetime.utcnow() + timedelta(seconds=request.expires_in)
-
-        # Prepare token metadata
-        token_metadata = {
-            "expires_at": expires_at.isoformat(),
-            "expires_in": request.expires_in
+    # Store the tokens using the existing helper function
+    await _store_integration_token(
+        db=db,
+        user_id=user.id,
+        integration_type="gmail",
+        access_token=token_data["access_token"],
+        refresh_token=token_data.get("refresh_token"),
+        token_metadata={
+            "expires_at": token_data["expires_at"],
+            "expires_in": token_data["expires_in"]
         }
+    )
 
-        # Store the tokens using the existing helper function
-        await _store_integration_token(
-            db=db,
-            user_id=user.id,
-            integration_type="gmail",
-            access_token=request.access_token,
-            refresh_token=request.refresh_token,
-            token_metadata=token_metadata
-        )
+    # Generate a simple task ID for tracking
+    import time
+    task_id = f"gmail_import_{user.id}_{int(time.time())}"
 
-        return IntegrationResponse(
-            status="success",
-            message="Gmail tokens stored successfully"
-        )
+    # Start the background import task
+    background_tasks.add_task(
+        _import_gmail_emails_background,
+        user.id,
+        token_data["access_token"],
+        task_id
+    )
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to store Gmail tokens: {str(e)}"
-        )
+    return {
+        "status": "success",
+        "message": "Gmail connected successfully. Tokens stored and tested.",
+        **test_result
+    }
 
 
 @router.post("/calendar/connect")

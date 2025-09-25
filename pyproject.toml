@@ -14,6 +14,7 @@ dependencies = [
     "google-genai>=1.23.0",
     "notion-client>=2.4.0",
     "google-cloud-tasks>=2.19.3",
+    "google-auth-oauthlib>=1.2.2",
 ]
 
 [tool.alembic]
