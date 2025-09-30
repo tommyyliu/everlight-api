@@ -103,12 +103,13 @@ class RawEntry(Base):
 
 class IntegrationToken(Base):
     __tablename__ = 'integration_tokens'
-    
+
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
     integration_type: Mapped[str] = mapped_column(String(50))  # e.g., 'notion', 'gmail', 'calendar'
     access_token: Mapped[str] = mapped_column(Text)  # Encrypted access token
     refresh_token: Mapped[Optional[str]] = mapped_column(Text)  # Optional refresh token
+    webhook_primary_id: Mapped[Optional[str]] = mapped_column(String(255))  # Primary identifier for webhook matching (e.g., email for Gmail)
     token_metadata: Mapped[Optional[dict]] = mapped_column(JSON)  # Additional token info (expires_at, scope, etc.)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now())

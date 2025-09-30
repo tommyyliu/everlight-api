@@ -5,6 +5,7 @@ import httpx
 import hmac
 import hashlib
 import json
+import base64
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request, Header
 from pydantic import BaseModel
@@ -68,6 +69,19 @@ class WebhookResponse(BaseModel):
     """Response for webhook operations."""
     status: str
     message: str
+
+
+class GmailPushNotificationMessage(BaseModel):
+    """Gmail Push notification message structure."""
+    data: str  # Base64url-encoded data
+    message_id: str
+    publish_time: str
+
+
+class GmailPushNotification(BaseModel):
+    """Gmail Push notification payload structure."""
+    message: GmailPushNotificationMessage
+    subscription: str
 
 
 @router.post("/notion/connect", response_model=IntegrationResponse)
@@ -479,6 +493,24 @@ async def _exchange_gmail_code_for_tokens(code: str) -> dict:
 
         token_data = response.json()
 
+        # Get user's email address using Gmail API profile endpoint
+        # Use Gmail API to get user profile which includes email
+        profile_response = await client.get(
+            "https://www.googleapis.com/gmail/v1/users/me/profile",
+            headers={
+                "Authorization": f"Bearer {token_data['access_token']}"
+            }
+        )
+
+        if profile_response.status_code == 200:
+            profile_data = profile_response.json()
+            user_email = profile_data.get("emailAddress")
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to fetch user profile: {profile_response.text}"
+            )
+
         # Calculate expiration time
         from datetime import datetime, timedelta
         expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
@@ -487,11 +519,12 @@ async def _exchange_gmail_code_for_tokens(code: str) -> dict:
             "access_token": token_data["access_token"],
             "refresh_token": token_data.get("refresh_token"),
             "expires_in": token_data["expires_in"],
-            "expires_at": expires_at.isoformat()
+            "expires_at": expires_at.isoformat(),
+            "user_email": user_email  # Add the user's email to the response
         }
 
 
-async def _store_integration_token(db: Session, user_id: UUID, integration_type: str, access_token: str, refresh_token: str = None, token_metadata: dict = None):
+async def _store_integration_token(db: Session, user_id: UUID, integration_type: str, access_token: str, refresh_token: str = None, webhook_primary_id: str = None, token_metadata: dict = None):
     """
     Store or update integration token in the database.
     """
@@ -508,6 +541,8 @@ async def _store_integration_token(db: Session, user_id: UUID, integration_type:
         existing_token.access_token = access_token
         if refresh_token:
             existing_token.refresh_token = refresh_token
+        if webhook_primary_id:
+            existing_token.webhook_primary_id = webhook_primary_id
         if token_metadata:
             existing_token.token_metadata = token_metadata
     else:
@@ -517,11 +552,225 @@ async def _store_integration_token(db: Session, user_id: UUID, integration_type:
             integration_type=integration_type,
             access_token=access_token,
             refresh_token=refresh_token,
+            webhook_primary_id=webhook_primary_id,
             token_metadata=token_metadata
         )
         db.add(new_token)
     
     db.commit()
+
+
+async def _setup_gmail_watch(access_token: str, user_id: UUID) -> dict:
+    """
+    Set up Gmail push notifications for a user.
+
+    Args:
+        access_token: Gmail access token
+        user_id: User UUID for logging
+
+    Returns:
+        Dict containing watch response from Gmail API
+
+    Raises:
+        Exception: If watch setup fails
+    """
+    # Gmail topic for push notifications
+    topic_name = "projects/everlight-459519/topics/gmail"
+
+    watch_request = {
+        "topicName": topic_name,
+        "labelIds": ["INBOX"],
+        "labelFilterBehavior": "INCLUDE"
+    }
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://www.googleapis.com/gmail/v1/users/me/watch",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            },
+            json=watch_request
+        )
+
+        if response.status_code != 200:
+            raise Exception(f"Failed to setup Gmail watch: {response.status_code} {response.text}")
+
+        watch_data = response.json()
+        print(f"Gmail watch setup successful for user {user_id}")
+        print(f"  - History ID: {watch_data.get('historyId')}")
+        print(f"  - Expiration: {watch_data.get('expiration')}")
+
+        return watch_data
+
+
+async def _refresh_gmail_token(refresh_token: str) -> dict:
+    """
+    Refresh Gmail access token using refresh token.
+
+    Args:
+        refresh_token: The refresh token
+
+    Returns:
+        Dict containing new access token and metadata
+
+    Raises:
+        Exception: If token refresh fails
+    """
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+
+    if not all([client_id, client_secret]):
+        raise Exception("Google OAuth credentials not configured")
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+        )
+
+        if response.status_code != 200:
+            raise Exception(f"Failed to refresh token: {response.status_code} {response.text}")
+
+        token_data = response.json()
+        print(f"Token refreshed successfully")
+
+        # Calculate expiration time
+        from datetime import datetime, timedelta
+        expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
+
+        return {
+            "access_token": token_data["access_token"],
+            "expires_in": token_data["expires_in"],
+            "expires_at": expires_at.isoformat()
+        }
+
+
+async def _refresh_token_if_needed(db: Session, token_record: models.IntegrationToken) -> str:
+    """
+    Check if Gmail token is expired and refresh if needed.
+
+    Args:
+        db: Database session
+        token_record: The integration token record
+
+    Returns:
+        Valid access token (either existing or refreshed)
+
+    Raises:
+        Exception: If token is expired and refresh fails
+    """
+    # Check if token is expired or will expire soon (within 5 minutes)
+    if token_record.token_metadata and token_record.token_metadata.get("expires_at"):
+        try:
+            from datetime import datetime, timedelta
+            expires_at_str = token_record.token_metadata["expires_at"]
+            expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+
+            # Add 5 minute buffer to avoid using tokens that expire mid-request
+            if datetime.utcnow() + timedelta(minutes=5) >= expires_at:
+                print(f"Gmail token expires at {expires_at}, refreshing...")
+
+                if not token_record.refresh_token:
+                    raise Exception("Token is expired and no refresh token available")
+
+                # Refresh the token
+                refresh_result = await _refresh_gmail_token(token_record.refresh_token)
+
+                # Update the database record
+                token_record.access_token = refresh_result["access_token"]
+                token_record.token_metadata.update({
+                    "expires_at": refresh_result["expires_at"],
+                    "expires_in": refresh_result["expires_in"]
+                })
+                db.commit()
+
+                print(f"Gmail token refreshed successfully")
+                return refresh_result["access_token"]
+            else:
+                print(f"Gmail token is still valid until {expires_at}")
+                return token_record.access_token
+
+        except Exception as e:
+            print(f"Error checking/refreshing token: {e}")
+            # If we can't parse the expiration or refresh fails, try with existing token
+            # The API call will fail with 401 if it's actually expired
+            return token_record.access_token
+    else:
+        print("No expiration info found, using existing token")
+        return token_record.access_token
+
+
+async def _stop_gmail_watch(access_token: str, user_id: UUID) -> dict:
+    """
+    Stop Gmail push notifications for a user.
+
+    Args:
+        access_token: Gmail access token
+        user_id: User UUID for logging
+
+    Returns:
+        Dict containing stop response from Gmail API
+
+    Raises:
+        Exception: If watch stop fails
+    """
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://www.googleapis.com/gmail/v1/users/me/stop",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+        )
+
+        if response.status_code in [200, 204]:
+            # 200 = success with content, 204 = success with no content
+            print(f"Gmail watch stopped successfully for user {user_id} (status: {response.status_code})")
+            return {"stopped": True}
+        elif response.status_code == 404:
+            # No active watch found - this is fine, watch is already stopped
+            print(f"No active Gmail watch found for user {user_id} (already stopped)")
+            return {"stopped": True, "note": "No active watch found"}
+        else:
+            raise Exception(f"Failed to stop Gmail watch: {response.status_code} {response.text}")
+
+
+async def _find_user_by_gmail_email(db: Session, email_address: str) -> UUID:
+    """
+    Find user ID by Gmail email address using the webhook_primary_id field.
+
+    Args:
+        db: Database session
+        email_address: Gmail email address from the webhook
+
+    Returns:
+        User UUID if found, None otherwise
+    """
+    try:
+        # Query the IntegrationToken table to find a Gmail token with this email as webhook_primary_id
+        token_query = select(models.IntegrationToken).where(
+            models.IntegrationToken.integration_type == "gmail",
+            models.IntegrationToken.webhook_primary_id == email_address
+        )
+        token_record = db.execute(token_query).scalar_one_or_none()
+
+        if token_record:
+            return token_record.user_id
+        else:
+            return None
+
+    except Exception as e:
+        print(f"Error finding user by Gmail email {email_address}: {e}")
+        return None
 
 
 async def _get_integration_token(db: Session, user_id: UUID, integration_type: str) -> str:
@@ -656,11 +905,20 @@ async def connect_gmail(
         integration_type="gmail",
         access_token=token_data["access_token"],
         refresh_token=token_data.get("refresh_token"),
+        webhook_primary_id=token_data.get("user_email"),  # Store user's Gmail email for webhook matching
         token_metadata={
             "expires_at": token_data["expires_at"],
             "expires_in": token_data["expires_in"]
         }
     )
+
+    # Set up Gmail watch for push notifications
+    try:
+        watch_result = await _setup_gmail_watch(token_data["access_token"], user.id)
+        print(f"Gmail watch setup result: {watch_result}")
+    except Exception as watch_error:
+        print(f"Warning: Failed to setup Gmail watch for user {user.id}: {watch_error}")
+        # Don't fail the entire connect process if watch setup fails
 
     # Generate a simple task ID for tracking
     import time
@@ -674,11 +932,11 @@ async def connect_gmail(
         task_id
     )
 
-    return {
-        "status": "success",
-        "message": "Gmail connected successfully. Tokens stored and tested.",
-        **test_result
-    }
+    return IntegrationResponse(
+        status="started",
+        message="Gmail connected successfully. Import started. This may take a few minutes depending on how many emails you have."
+        # task_id=task_id
+    )
 
 
 @router.delete("/gmail/disconnect")
@@ -704,6 +962,13 @@ async def disconnect_gmail(
                 status_code=404,
                 detail="No Gmail connection found for user"
             )
+
+        # Ensure we have a valid access token, refresh if needed
+        valid_access_token = await _refresh_token_if_needed(db, token_record)
+
+        # Stop Gmail watch for push notifications
+        stop_response = await _stop_gmail_watch(valid_access_token, user.id)
+        print(f"Gmail watch stop result: {stop_response}")
 
         revoke_result = {"revoked": False, "error": None}
 
@@ -815,6 +1080,76 @@ def get_gmail_status(
         )
 
 
+@router.post("/webhook/gmail")
+async def handle_gmail_webhook(
+    notification: GmailPushNotification,
+    db: Annotated[Session, Depends(get_db_session)]
+):
+    """
+    Gmail webhook endpoint to handle push notifications.
+    The data will be base64url-encoded JSON containing emailAddress and historyId.
+    We need to decode the emailAddress to find which user this notification is for.
+    """
+    try:
+        print(f"Received Gmail webhook notification")
+        print(f"Parsed notification: {notification}")
+
+        # Decode the base64url-encoded data
+        try:
+            decoded_data = base64.urlsafe_b64decode(notification.message.data + '==')  # Add padding if needed
+            gmail_data = json.loads(decoded_data.decode('utf-8'))
+
+            print(f"Decoded Gmail data: {gmail_data}")
+
+            # Extract emailAddress and historyId
+            email_address = gmail_data.get("emailAddress")
+            history_id = gmail_data.get("historyId")
+
+            if not email_address or not history_id:
+                print(f"Missing required fields - emailAddress: {email_address}, historyId: {history_id}")
+                return WebhookResponse(
+                    status="error",
+                    message="Missing emailAddress or historyId in decoded data"
+                )
+
+            print(f"Gmail notification - Email: {email_address}, History ID: {history_id}")
+
+            # Find user by webhook_primary_id
+            user_id = await _find_user_by_gmail_email(db, email_address)
+
+            if user_id:
+                print(f"Found user {user_id} for email {email_address}")
+            else:
+                print(f"No user found for email {email_address}")
+
+            # Log the processed webhook data
+            print(f"Gmail webhook processed:")
+            print(f"  - Email Address: {email_address}")
+            print(f"  - History ID: {history_id}")
+            print(f"  - User ID: {user_id}")
+            print(f"  - Message ID: {notification.message.message_id}")
+            print(f"  - Publish Time: {notification.message.publish_time}")
+            print(f"  - Subscription: {notification.subscription}")
+
+            return WebhookResponse(
+                status="success",
+                message=f"Gmail webhook processed successfully for {email_address}"
+            )
+
+        except Exception as decode_error:
+            print(f"Error decoding message data: {decode_error}")
+            return WebhookResponse(
+                status="error",
+                message=f"Failed to decode message data: {str(decode_error)}"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error processing Gmail webhook: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process Gmail webhook: {str(e)}")
+
+
 @router.post("/calendar/connect")
 async def connect_calendar(
     # request: CalendarConnectRequest,
@@ -825,6 +1160,6 @@ async def connect_calendar(
     Future endpoint for Calendar integration.
     """
     return {
-        "status": "not_implemented", 
+        "status": "not_implemented",
         "message": "Calendar integration coming soon"
     }

@@ -61,6 +61,9 @@ python run_tests.py
 pytest tests/ -v
 ```
 
+### 4. Deploy
+```gcloud run deploy --source .```
+
 ### Test Coverage
 - **Journal Endpoints** - Full CRUD operations with authentication
 - **Notion Integration** - Import functionality and error handling
