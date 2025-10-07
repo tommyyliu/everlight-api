@@ -5,7 +5,7 @@ from datetime import datetime, date
 import numpy as np
 from numpy.typing import NDArray
 
-from sqlalchemy import String, DateTime, ForeignKey, JSON, Text, UniqueConstraint, func, UUID, Date
+from sqlalchemy import String, DateTime, ForeignKey, JSON, Text, UniqueConstraint, Index, func, UUID, Date
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from pgvector.sqlalchemy import HALFVEC
 
@@ -109,13 +109,19 @@ class IntegrationToken(Base):
     integration_type: Mapped[str] = mapped_column(String(50))  # e.g., 'notion', 'gmail', 'calendar'
     access_token: Mapped[str] = mapped_column(Text)  # Encrypted access token
     refresh_token: Mapped[Optional[str]] = mapped_column(Text)  # Optional refresh token
-    webhook_primary_id: Mapped[Optional[str]] = mapped_column(String(255))  # Primary identifier for webhook matching (e.g., email for Gmail)
+    # Primary identifier for webhook matching (e.g., email for Gmail, bot_id(basically composite user+workspace) for Notion)
+    webhook_primary_id: Mapped[Optional[str]] = mapped_column(String(255))
     token_metadata: Mapped[Optional[dict]] = mapped_column(JSON)  # Additional token info (expires_at, scope, etc.)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now())
 
-    # Composite unique constraint - one token per user per integration type
-    __table_args__ = (UniqueConstraint('user_id', 'integration_type'),)
+    # Composite unique constraint - allows multiple workspaces per user (e.g., Notion Personal + Work)
+    # For integrations with single workspace, webhook_primary_id can be null and constraint still works
+    __table_args__ = (
+        UniqueConstraint('user_id', 'integration_type', 'webhook_primary_id',
+                        name='integration_tokens_user_workspace_key'),
+        Index('idx_webhook_routing', 'integration_type', 'webhook_primary_id'),
+    )
 
 
 class Note(Base):
@@ -129,17 +135,3 @@ class Note(Base):
     embedding: Mapped[NDArray[np.float16]] = mapped_column(HALFVEC(3072))  # Store embedding vector (768 dimensions for Gemini)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now())
-
-
-class WebhookToken(Base):
-    __tablename__ = 'webhook_tokens'
-    
-    id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'))
-    verification_token: Mapped[str] = mapped_column(String(255))
-    source: Mapped[str] = mapped_column(String(50))  # e.g., 'notion', 'slack', etc.
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now())
-
-    # Composite unique constraint - one token per user per source
-    __table_args__ = (UniqueConstraint('user_id', 'source'),)

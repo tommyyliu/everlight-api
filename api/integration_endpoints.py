@@ -54,6 +54,7 @@ class NotionWebhookEvent(BaseModel):
     workspace_name: str
     subscription_id: str
     integration_id: str
+    accessible_by: list[dict]  # List of {"id": str, "type": str} - contains bot_ids for routing
     authors: list[dict]
     attempt_number: int
     entity: dict  # Contains id and type
@@ -94,33 +95,55 @@ async def connect_notion(
     """
     Connect Notion using OAuth code.
     Backend will exchange for access token, store in DB, and load all accessible pages.
+
+    Supports multiple workspaces per user - each workspace gets a unique bot_id.
     """
-    
+
     try:
-        # Exchange code for access token
-        access_token = await _exchange_notion_code_for_token(code)
-        
-        # Store or update the access token in the database
-        await _store_integration_token(db, user.id, "notion", access_token)
-        
+        # Exchange code for access token and metadata
+        oauth_data = await _exchange_notion_code_for_token(code)
+
+        # Extract person info from owner field
+        owner = oauth_data["owner"]
+        person_id = owner["user"]["id"]
+        person_email = owner["user"]["person"]["email"]
+        person_name = owner["user"]["name"]
+
+        # Store or update the access token with workspace metadata
+        await _store_integration_token(
+            db=db,
+            user_id=user.id,
+            integration_type="notion",
+            access_token=oauth_data["access_token"],
+            refresh_token=oauth_data.get("refresh_token"),
+            webhook_primary_id=oauth_data["bot_id"],  # Unique per user+workspace
+            token_metadata={
+                "workspace_id": oauth_data["workspace_id"],
+                "workspace_name": oauth_data["workspace_name"],
+                "person_id": person_id,
+                "person_email": person_email,
+                "person_name": person_name
+            }
+        )
+
         # Generate a simple task ID for tracking
         import time
         task_id = f"notion_import_{user.id}_{int(time.time())}"
-        
+
         # Start the background import task
         background_tasks.add_task(
             _import_notion_pages_background,
             user.id,
-            access_token,
+            oauth_data["access_token"],
             task_id
         )
-        
+
         return IntegrationResponse(
             status="started",
-            message="Notion connected successfully. Import started. This may take a few minutes depending on how many pages you have.",
+            message=f"Notion workspace '{oauth_data['workspace_name']}' connected successfully. Import started. This may take a few minutes depending on how many pages you have.",
             task_id=task_id
         )
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -378,6 +401,137 @@ async def handle_notion_webhook(
         raise HTTPException(status_code=500, detail=f"Failed to process Notion webhook: {str(e)}")
 
 
+@router.post("/webhook/notion")
+async def handle_notion_webhook_unified(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Annotated[Session, Depends(get_db_session)],
+    x_notion_signature: Annotated[str, Header(alias="X-Notion-Signature")] = None
+):
+    """
+    Unified Notion webhook endpoint for all users and workspaces.
+    Routes events based on bot_id from accessible_by array.
+
+    Supports:
+    - Multiple workspaces per user
+    - Shared/collaborative pages (multiple users)
+    - Verification challenges
+    - Signature verification
+    """
+    try:
+        # Get the raw request body for signature verification
+        body = await request.body()
+
+        # Parse the JSON payload
+        try:
+            payload_dict = json.loads(body.decode())
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+        # Handle verification challenge
+        if "verification_token" in payload_dict:
+            print("=" * 60)
+            print("🔑 NOTION WEBHOOK VERIFICATION TOKEN")
+            print("=" * 60)
+            print(f"Token: {payload_dict['verification_token']}")
+            print()
+            print("Next steps:")
+            print("1. Copy the token above")
+            print("2. Paste it into Notion integration settings portal")
+            print("3. Add to .env: NOTION_WEBHOOK_VERIFICATION_TOKEN=<token>")
+            print("=" * 60)
+            return {"status": "ok"}
+
+        # Parse webhook event
+        payload = NotionWebhookEvent.model_validate(payload_dict)
+
+        # Verify signature if verification token is configured
+        verification_token = os.getenv("NOTION_WEBHOOK_VERIFICATION_TOKEN")
+        if x_notion_signature and verification_token:
+            if not _verify_notion_signature(body, verification_token, x_notion_signature):
+                raise HTTPException(status_code=401, detail="Invalid webhook signature")
+        elif x_notion_signature and not verification_token:
+            print("Warning: Webhook signature present but NOTION_WEBHOOK_VERIFICATION_TOKEN not configured")
+
+        # Extract bot_ids from accessible_by array
+        bot_ids = [item["id"] for item in payload.accessible_by if item["type"] == "bot"]
+
+        if not bot_ids:
+            print(f"Warning: No bot_ids found in accessible_by: {payload.accessible_by}")
+            return WebhookResponse(
+                status="success",
+                message="No bot_ids found in webhook event"
+            )
+
+        # Find all matching tokens
+        tokens = _find_tokens_by_bot_ids(db, bot_ids)
+
+        if not tokens:
+            print(f"Warning: No tokens found for bot_ids: {bot_ids}")
+            return WebhookResponse(
+                status="success",
+                message="No matching users found"
+            )
+
+        # Process based on event type
+        if payload.type in ["page.created", "page.content_updated"]:
+            # Queue page update for each user+workspace
+            for token in tokens:
+                print(f"Queuing Notion page update for user {token.user_id}, workspace: {token.token_metadata.get('workspace_name')}")
+                background_tasks.add_task(
+                    create_or_update_notion_page,
+                    user_id=token.user_id,
+                    page_id=payload.entity["id"],
+                    notion_token=token.access_token
+                )
+
+            return WebhookResponse(
+                status="success",
+                message=f"Queued page update for {len(tokens)} user(s)"
+            )
+
+        else:
+            # Unsupported event type - acknowledge but don't process
+            print(f"Unsupported Notion event type: {payload.type}")
+            return WebhookResponse(
+                status="success",
+                message=f"Event type {payload.type} acknowledged but not processed"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to process Notion webhook: {str(e)}")
+
+
+def _find_tokens_by_bot_ids(db: Session, bot_ids: list[str]) -> list[models.IntegrationToken]:
+    """
+    Find all integration tokens matching the given bot_ids.
+
+    Used for routing webhook events to the correct users when a page is updated.
+    For shared/collaborative pages, multiple bot_ids will be present.
+
+    Args:
+        db: Database session
+        bot_ids: List of bot_ids from webhook's accessible_by array
+
+    Returns:
+        List of IntegrationToken records
+    """
+    if not bot_ids:
+        return []
+
+    tokens = db.execute(
+        select(models.IntegrationToken).where(
+            models.IntegrationToken.integration_type == "notion",
+            models.IntegrationToken.webhook_primary_id.in_(bot_ids)
+        )
+    ).scalars().all()
+
+    return list(tokens)
+
+
 def _verify_notion_signature(body: bytes, verification_token: str, signature_header: str) -> bool:
     """
     Verify Notion webhook signature using HMAC-SHA256.
@@ -412,9 +566,17 @@ def _verify_notion_signature(body: bytes, verification_token: str, signature_hea
         return False
 
 
-async def _exchange_notion_code_for_token(code: str) -> str:
+async def _exchange_notion_code_for_token(code: str) -> dict:
     """
-    Exchange OAuth code for Notion access token.
+    Exchange OAuth code for Notion access token and metadata.
+
+    Returns dict with:
+        - access_token: Token for API requests
+        - refresh_token: Optional refresh token
+        - bot_id: Unique identifier for this user+workspace connection
+        - workspace_id: Workspace ID
+        - workspace_name: Human-readable workspace name
+        - owner: User info including person_id and email
     """
     # Get Notion OAuth credentials from environment
     client_id = os.getenv("NOTION_CLIENT_ID")
@@ -427,7 +589,7 @@ async def _exchange_notion_code_for_token(code: str) -> str:
             status_code=500,
             detail="Notion OAuth credentials not configured"
         )
-    
+
     # Exchange code for token
     async with httpx.AsyncClient() as client:
         response = await client.post(
@@ -443,15 +605,24 @@ async def _exchange_notion_code_for_token(code: str) -> str:
             },
             auth=(client_id, client_secret)
         )
-        
+
         if response.status_code != 200:
             raise HTTPException(
                 status_code=400,
                 detail=f"Failed to exchange code for token: {response.text}"
             )
-        
+
         token_data = response.json()
-        return token_data["access_token"]
+
+        # Return all relevant OAuth data for multi-workspace support
+        return {
+            "access_token": token_data["access_token"],
+            "refresh_token": token_data.get("refresh_token"),
+            "bot_id": token_data["bot_id"],
+            "workspace_id": token_data["workspace_id"],
+            "workspace_name": token_data["workspace_name"],
+            "owner": token_data["owner"]
+        }
 
 
 async def _exchange_gmail_code_for_tokens(code: str) -> dict:
@@ -527,17 +698,29 @@ async def _exchange_gmail_code_for_tokens(code: str) -> dict:
 async def _store_integration_token(db: Session, user_id: UUID, integration_type: str, access_token: str, refresh_token: str = None, webhook_primary_id: str = None, token_metadata: dict = None):
     """
     Store or update integration token in the database.
+
+    For integrations supporting multiple workspaces (like Notion), webhook_primary_id
+    acts as the workspace identifier (bot_id). This allows the same user to connect
+    multiple workspaces.
     """
-    # Check if token already exists for this user and integration
+    # Build query conditions
+    conditions = [
+        models.IntegrationToken.user_id == user_id,
+        models.IntegrationToken.integration_type == integration_type
+    ]
+
+    # For multi-workspace integrations, include webhook_primary_id in lookup
+    # This allows multiple tokens per user for different workspaces
+    if webhook_primary_id:
+        conditions.append(models.IntegrationToken.webhook_primary_id == webhook_primary_id)
+
+    # Check if token already exists
     existing_token = db.execute(
-        select(models.IntegrationToken).where(
-            models.IntegrationToken.user_id == user_id,
-            models.IntegrationToken.integration_type == integration_type
-        )
+        select(models.IntegrationToken).where(*conditions)
     ).scalar_one_or_none()
-    
+
     if existing_token:
-        # Update existing token
+        # Update existing token (e.g., refreshing same workspace connection)
         existing_token.access_token = access_token
         if refresh_token:
             existing_token.refresh_token = refresh_token
@@ -546,7 +729,7 @@ async def _store_integration_token(db: Session, user_id: UUID, integration_type:
         if token_metadata:
             existing_token.token_metadata = token_metadata
     else:
-        # Create new token record
+        # Create new token record (e.g., connecting new workspace)
         new_token = models.IntegrationToken(
             user_id=user_id,
             integration_type=integration_type,
@@ -556,7 +739,7 @@ async def _store_integration_token(db: Session, user_id: UUID, integration_type:
             token_metadata=token_metadata
         )
         db.add(new_token)
-    
+
     db.commit()
 
 
